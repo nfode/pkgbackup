@@ -1,6 +1,6 @@
 ---
 hosts:
-- name: [host1]
+- name: [cranky-panini]
   file: host1.txt
 - name: [host2]
   file: host2.txt
