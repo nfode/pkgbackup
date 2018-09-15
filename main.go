@@ -13,6 +13,9 @@ import (
 
 var (
 	hostname, _ = os.Hostname()
+	app         = kingpin.New("pkgbackup", "generic help")
+	configFile  = app.Flag("configFile", "path to the configFile file").File()
+	syncCommand = app.Command("sync", "export package list")
 )
 
 func getFileForHostname(hostname string, config Config) (string, error) {
@@ -45,9 +48,6 @@ func ReadPackagesFromFile(config Config, hostname string, baseDir string) ([]str
 }
 
 func main() {
-	app := kingpin.New("pkgbackup", "generic help")
-	configFile := app.Flag("configFile", "path to the configFile file").File()
-	syncCommand := app.Command("sync", "export package list")
 	res := kingpin.MustParse(app.Parse(os.Args[1:]))
 	config := ParseConfigFile(*configFile)
 	switch res {
@@ -63,24 +63,7 @@ func sync(config Config, baseDir string) {
 	}
 	comparisionResult := ComparePackages(exportedPackages, systemPackages)
 
-	if len(comparisionResult.Unchanged) > 0 {
-		fmt.Println("UnchangedPackages:")
-		for _, v := range comparisionResult.Unchanged {
-			fmt.Println("- " + v)
-		}
-	}
-	if len(comparisionResult.Added) > 0 {
-		fmt.Println("Added packages:")
-		for _, v := range comparisionResult.Added {
-			fmt.Println("- " + v)
-		}
-	}
-	if len(comparisionResult.Removed) > 0 {
-		fmt.Println("Removed packages:")
-		for _, v := range comparisionResult.Removed {
-			fmt.Println("- " + v)
-		}
-	}
+	AskUser(comparisionResult)
 }
 
 func GetSystemPackages() ([]string, error) {
