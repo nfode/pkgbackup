@@ -12,29 +12,23 @@ import (
 )
 
 var (
-	hostname, _ = os.Hostname()
 	app         = kingpin.New("pkgbackup", "generic help")
 	configFile  = app.Flag("configFile", "path to the configFile file").File()
 	syncCommand = app.Command("sync", "export package list")
+	hostname    = os.Getenv("HOST")
 )
 
-func getFileForHostname(hostname string, config Config) (string, error) {
+func getHostConfig(hostname string, config Config) (Host, error) {
 	for _, entry := range config.Hosts {
-		for _, name := range entry.Name {
-			if name == hostname {
-				return entry.File, nil
-			}
+		if entry.Name == hostname {
+			return entry, nil
 		}
 	}
-	return string(""), errors.New("file for hostname not found")
+	return Host{}, errors.New("file for hostname not found")
 }
 
-func ReadPackagesFromFile(config Config, hostname string, baseDir string) ([]string, error) {
-	filePath, err := getFileForHostname(hostname, config)
-	filePath = baseDir + "/" + filePath
-	if err != nil {
-		return []string{}, err
-	}
+func ReadPackagesFromFile(fileName string, baseDir string) ([]string, error) {
+	filePath := baseDir + "/" + fileName
 	data, fileErr := ioutil.ReadFile(filePath)
 	if fileErr != nil {
 		return []string{}, fileErr
@@ -56,17 +50,65 @@ func main() {
 	}
 }
 func sync(config Config, baseDir string) {
-	exportedPackages, err := ReadPackagesFromFile(config, hostname, baseDir)
-	systemPackages, err := GetSystemPackages()
+	hostConfig, err := getHostConfig(hostname, config)
+	versionedPackages, err := ReadPackagesFromFile(hostConfig.File, baseDir)
+	systemPackages, err := GetInstalledPackages()
 	if err != nil {
 		fmt.Println("reading existing packages failed: " + err.Error())
 	}
-	comparisionResult := ComparePackages(exportedPackages, systemPackages)
-
-	AskUser(comparisionResult)
+	ignoredPackages, err := ReadPackagesFromFile(hostConfig.IgnoreFile, baseDir)
+	if err != nil {
+		fmt.Println(fmt.Printf("Failed to read ignore file for host %v: %v", hostname, err.Error()))
+	}
+	comparisionResult := ComparePackages(versionedPackages, systemPackages)
+	fmt.Println("Packages added to versioned packages:")
+	for _, pkg := range comparisionResult.Added {
+		fmt.Println(pkg)
+	}
+	for _, pkg := range comparisionResult.Removed {
+		fmt.Println(pkg)
+	}
+	var outputs []OutputElement
+	if hostConfig.SubscribeTo != nil {
+		for _, subscribedTo := range hostConfig.SubscribeTo {
+			subscribedToConfig, _ := getHostConfig(subscribedTo, config)
+			subscribedToPackages, _ := ReadPackagesFromFile(subscribedToConfig.File, baseDir)
+			comparisionResult := ComparePackages(subscribedToPackages, systemPackages)
+			filteredResult := filterComparisonResult(ignoredPackages, comparisionResult)
+			output := OutputElement{From: subscribedTo, ToInstall: filteredResult.Added, ToRemove: filteredResult.Removed}
+			outputs = append(outputs, output)
+		}
+	}
+	for _, output := range outputs {
+		fmt.Println("Following packages were installed on: ", output.From)
+		for _, pkg := range output.ToInstall {
+			fmt.Println(pkg)
+		}
+		fmt.Println("Following packages were removed on: ", output.From)
+		for _, pkg := range output.ToRemove {
+			fmt.Println(pkg)
+		}
+	}
+}
+func filterComparisonResult(ignoredPackages []string, compareResult CompareResult) CompareResult {
+	toRemove := clearList(compareResult.Removed, ignoredPackages)
+	toAdd := clearList(compareResult.Added, ignoredPackages)
+	return CompareResult{toAdd, toRemove, compareResult.Unchanged}
 }
 
-func GetSystemPackages() ([]string, error) {
+func clearList(toClear []string, ignoredPackages []string) []string {
+	var result []string
+	for _, value := range toClear {
+		if contains(ignoredPackages, value) {
+			continue
+		} else {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+func GetInstalledPackages() ([]string, error) {
 	cmd := exec.Command("yaourt", "-Qqe")
 	result, err := cmd.Output()
 	if err != nil {

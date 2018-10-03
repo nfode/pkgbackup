@@ -7,7 +7,7 @@ import (
 )
 
 func TestGetSystemPackages(t *testing.T) {
-	result, err := GetSystemPackages()
+	result, err := GetInstalledPackages()
 	if err != nil {
 		t.Fail()
 	}

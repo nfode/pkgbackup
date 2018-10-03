@@ -8,11 +8,13 @@ import (
 )
 
 type Host struct {
-	Name []string `yaml:"name"`
+	Name string `yaml:"name"`
 	File string   `yaml:"file"`
+	IgnoreFile string `yaml:"ignore"`
+	SubscribeTo []string `yaml:"subscribeTo,omitempty"`
 }
 type Config struct {
-	Hosts []Host `yaml:"host"`
+	Hosts []Host `yaml:"hosts"`
 }
 
 func ParseConfigFile(file *os.File) Config {

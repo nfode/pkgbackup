@@ -33,11 +33,3 @@ func index(slice []string, element string) int {
 	}
 	return -1
 }
-func contains(elements []string, item string) bool {
-	for _, v := range elements {
-		if v == item {
-			return true
-		}
-	}
-	return false
-}
