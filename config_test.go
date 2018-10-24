@@ -9,8 +9,8 @@ import (
 var (
 	exampleConfig = Config{
 		Hosts: []Host{
-			{Name: []string{"host1"}, File: "host1.txt"},
-			{Name: []string{"host2"}, File: "host2.txt"}},
+			{Name: "host1", File: "host1.txt", IgnoreFile: "host1-ignore.txt", SubscribeTo: []string{"host2"}},
+			{Name: "host2", File: "host2.txt", IgnoreFile: "host2-ignore.txt"}},
 	}
 )
 

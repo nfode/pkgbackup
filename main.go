@@ -1,51 +1,20 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
-	"strings"
 )
 
 var (
-	hostname, _ = os.Hostname()
-	app         = kingpin.New("pkgbackup", "generic help")
-	configFile  = app.Flag("configFile", "path to the configFile file").File()
-	syncCommand = app.Command("sync", "export package list")
+	app             = kingpin.New("pkgbackup", "generic help")
+	configFile      = app.Flag("configFile", "path to the configFile file").File()
+	hostPackageFile = app.Flag("hostPackageFile", "alternative host packages").File()
+	dryRunFlag      = app.Flag("dryRun", "run the tool without installing anything").Bool()
+	syncCommand     = app.Command("sync", "export package list")
+	hostname        = os.Getenv("HOST")
 )
-
-func getFileForHostname(hostname string, config Config) (string, error) {
-	for _, entry := range config.Hosts {
-		for _, name := range entry.Name {
-			if name == hostname {
-				return entry.File, nil
-			}
-		}
-	}
-	return string(""), errors.New("file for hostname not found")
-}
-
-func ReadPackagesFromFile(config Config, hostname string, baseDir string) ([]string, error) {
-	filePath, err := getFileForHostname(hostname, config)
-	filePath = baseDir + "/" + filePath
-	if err != nil {
-		return []string{}, err
-	}
-	data, fileErr := ioutil.ReadFile(filePath)
-	if fileErr != nil {
-		return []string{}, fileErr
-	}
-
-	text := string(data[:])
-
-	packages := strings.Split(text, "\n")
-
-	return packages, nil
-}
 
 func main() {
 	res := kingpin.MustParse(app.Parse(os.Args[1:]))
@@ -56,33 +25,24 @@ func main() {
 	}
 }
 func sync(config Config, baseDir string) {
-	exportedPackages, err := ReadPackagesFromFile(config, hostname, baseDir)
-	systemPackages, err := GetSystemPackages()
+	hostConfig, err := GetHostConfig(hostname, config)
+	versionedPackages, err := ReadPackagesFromFile(hostConfig.File, baseDir)
+	systemPackages, err := GetInstalledPackages()
 	if err != nil {
 		fmt.Println("reading existing packages failed: " + err.Error())
 	}
-	comparisionResult := ComparePackages(exportedPackages, systemPackages)
-
-	AskUser(comparisionResult)
-}
-
-func GetSystemPackages() ([]string, error) {
-	cmd := exec.Command("yaourt", "-Qqe")
-	result, err := cmd.Output()
+	ignoredPackages, err := ReadPackagesFromFile(hostConfig.IgnoreFile, baseDir)
 	if err != nil {
-		return []string{}, nil
+		fmt.Println(fmt.Printf("Failed to read ignore file for host %v: %v", hostname, err.Error()))
 	}
-	resultAsString := string(result)
-	packages := strings.Split(resultAsString, "\n")
-	return clearPackages(packages), nil
+	userInput := UserInput{dryRun: *dryRunFlag, versionedPackages: versionedPackages, systemPackages: systemPackages, ignoredPackages: ignoredPackages}
+	userInput.HandleHostPackagesChange()
+	userInput.HandleSubscribedPackageChanges(hostConfig, config, baseDir)
+	CommitPackageChanges(userInput, hostConfig, baseDir)
 }
 
-func clearPackages(packages []string) []string {
-	var clearedPackages []string
-	for _, v := range packages {
-		if len(v) > 1 {
-			clearedPackages = append(clearedPackages, v)
-		}
-	}
-	return clearedPackages
-}
+
+
+
+
+

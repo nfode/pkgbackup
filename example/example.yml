@@ -1,7 +1,13 @@
 ---
 hosts:
-- name: [host1]
-  file: host1.txt
-- name: [host2]
-  file: host2.txt
+  -
+    name: host1
+    file: host1.txt
+    ignore: host1-ignore.txt
+    subscribeTo:
+      - host2
+  -
+    name: host2
+    file: host2.txt
+    ignore: host2-ignore.txt
 ...

@@ -7,7 +7,7 @@ import (
 )
 
 func TestGetSystemPackages(t *testing.T) {
-	result, err := GetSystemPackages()
+	result, err := GetInstalledPackages()
 	if err != nil {
 		t.Fail()
 	}
@@ -17,7 +17,7 @@ func TestGetSystemPackages(t *testing.T) {
 }
 
 func TestReadPackagesFromFile(t *testing.T) {
-	packages, err := ReadPackagesFromFile(exampleConfig, "host1", "example")
+	packages, err := ReadPackagesFromFile("host1", "example")
 	if err != nil {
 		t.Fail()
 	}

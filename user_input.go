@@ -1,61 +1,72 @@
 package main
 
-import (
-	"fmt"
-	"github.com/nu7hatch/gouuid"
-	"os"
-	"os/exec"
-	"strings"
-)
+import "fmt"
 
-func openEditor(path string) error {
-	editor := os.Getenv("EDITOR")
-	cmd := exec.Command(editor, path)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	return cmd.Run()
+type UserInput struct {
+	versionedPackages []string
+	systemPackages    []string
+	ignoredPackages   []string
+	dryRun            bool
 }
 
-func WriteTmpFile(comparisionResult CompareResult) string {
+func (userInput *UserInput) HandleSubscribedPackageChanges(hostConfig Host, config Config, baseDir string) {
+	if hostConfig.SubscribeTo != nil {
+		for _, subscribedTo := range hostConfig.SubscribeTo {
+			subscribedToConfig, _ := GetHostConfig(subscribedTo, config)
+			subscribedToPackages, _ := ReadPackagesFromFile(subscribedToConfig.File, baseDir)
+			comparisionResult := ComparePackages(subscribedToPackages, userInput.systemPackages)
+			filteredResult := FilterComparisonResult(userInput.ignoredPackages, comparisionResult)
+			userInput.askForUserInput(filteredResult)
+		}
+	}
+}
+
+func (userInput *UserInput) HandleHostPackagesChange() {
+	comparisionResult := ComparePackages(userInput.versionedPackages, userInput.systemPackages)
+	fmt.Println("Comparing installed packages with versioned packages")
+	userInput.askForUserInput(comparisionResult)
+}
+
+func (userInput *UserInput) askForUserInput(comparisionResult CompareResult) {
+	fmt.Println("Packages to remove:")
+	result := askForUserInput("remove", comparisionResult.Removed, userInput.dryRun)
+	userInput.systemPackages = removeElementsFromSlice(userInput.systemPackages, result)
+
+	fmt.Println("Packages to add")
+	result = askForUserInput("add", comparisionResult.Added, userInput.dryRun)
+	userInput.systemPackages = addElementsToSlice(userInput.systemPackages, result)
+}
+
+func addElementsToSlice(s []string, toAdd []string) []string {
+	for _, v := range toAdd {
+		if index := getElementIndex(s, v); index == -1 {
+			s = append(s, v)
+		}
+	}
+	return s
+}
+
+// returns accepted packages
+func askForUserInput(text string, packages []string, dryRun bool) []string {
 	var result []string
-	if len(comparisionResult.Added) > 0 {
-		result = append(result, "# Added:")
-		for _, v := range comparisionResult.Added {
-			result = append(result, "install "+v)
+	for _, p := range packages {
+		fmt.Println(fmt.Sprintf("%s: %s", text, p))
+		fmt.Println("[y/N]")
+		if askForConfirmation() {
+			if !dryRun {
+				// todo add logic to remove or add package
+			}
+			result = append(result, p)
 		}
 	}
-	if len(comparisionResult.Removed) > 0 {
-		result = append(result, "# Remove:")
-		for _, v := range comparisionResult.Removed {
-			result = append(result, "remove "+v)
+	return result
+}
+
+func removeElementsFromSlice(s []string, toRemove []string) []string {
+	for _, v := range toRemove {
+		if index := getElementIndex(s, v); index > -1 {
+			s = deleteElementByIndex(s, index)
 		}
 	}
-	result = append(result, footer())
-	resultAsString := strings.Join(result, "\n")
-	id, _ := uuid.NewV4()
-	filePath := "/tmp/pkbackup_" + id.String() + ".txt"
-	fmt.Println(resultAsString)
-	f, err := os.Create(filePath)
-	defer f.Close()
-	if err != nil {
-		fmt.Println("creating tmp file failed: " + err.Error())
-	}
-	f.WriteString(resultAsString)
-	f.Sync()
-	return filePath
-}
-
-func AskUser(comparisionResult CompareResult) error {
-	path := WriteTmpFile(comparisionResult)
-	defer os.Remove(path)
-	return openEditor(path)
-}
-
-func footer() string {
-	return `
-# Commands:
-# 	i, install <package> = install package
-# 	r, remove <package> = remove package
-# 	a, add <package> = add package to package backup file
-		`
+	return s
 }
