@@ -1,16 +1,18 @@
 package main
 
 import (
+	"errors"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 )
 
 type Host struct {
-	Name string `yaml:"name"`
-	File string   `yaml:"file"`
-	IgnoreFile string `yaml:"ignore"`
+	Name        string   `yaml:"name"`
+	File        string   `yaml:"file"`
+	IgnoreFile  string   `yaml:"ignore"`
 	SubscribeTo []string `yaml:"subscribeTo,omitempty"`
 }
 type Config struct {
@@ -31,4 +33,30 @@ func ParseConfigFile(file *os.File) Config {
 	}
 
 	return config
+}
+
+func GetHostConfig(hostname string, config Config) (Host, error) {
+	for _, entry := range config.Hosts {
+		if entry.Name == hostname {
+			return entry, nil
+		}
+	}
+	return Host{}, errors.New("file for hostname not found")
+}
+
+func ReadPackagesFromFile(fileName string, baseDir string) ([]string, error) {
+	filePath := fileName
+	if baseDir != "" {
+		filePath = baseDir + "/" + fileName
+	}
+	data, fileErr := ioutil.ReadFile(filePath)
+	if fileErr != nil {
+		return []string{}, fileErr
+	}
+
+	text := string(data[:])
+
+	packages := strings.Split(text, "\n")
+
+	return packages, nil
 }

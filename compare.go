@@ -22,3 +22,21 @@ func ComparePackages(a []string, b []string) CompareResult {
 	compareResult.Removed = second
 	return compareResult
 }
+
+func FilterComparisonResult(ignoredPackages []string, compareResult CompareResult) CompareResult {
+	toRemove := getIntersectingElements(compareResult.Removed, ignoredPackages)
+	toAdd := getIntersectingElements(compareResult.Added, ignoredPackages)
+	return CompareResult{toAdd, toRemove, compareResult.Unchanged}
+}
+
+func getIntersectingElements(a []string, b []string) []string {
+	var result []string
+	for _, value := range a {
+		if contains(b, value) {
+			continue
+		} else {
+			result = append(result, value)
+		}
+	}
+	return result
+}

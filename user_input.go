@@ -12,10 +12,10 @@ type UserInput struct {
 func (userInput *UserInput) HandleSubscribedPackageChanges(hostConfig Host, config Config, baseDir string) {
 	if hostConfig.SubscribeTo != nil {
 		for _, subscribedTo := range hostConfig.SubscribeTo {
-			subscribedToConfig, _ := getHostConfig(subscribedTo, config)
+			subscribedToConfig, _ := GetHostConfig(subscribedTo, config)
 			subscribedToPackages, _ := ReadPackagesFromFile(subscribedToConfig.File, baseDir)
 			comparisionResult := ComparePackages(subscribedToPackages, userInput.systemPackages)
-			filteredResult := filterComparisonResult(userInput.ignoredPackages, comparisionResult)
+			filteredResult := FilterComparisonResult(userInput.ignoredPackages, comparisionResult)
 			userInput.askForUserInput(filteredResult)
 		}
 	}
