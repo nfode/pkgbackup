@@ -29,18 +29,17 @@ func (userInput *UserInput) HandleHostPackagesChange() {
 
 func (userInput *UserInput) askForUserInput(comparisionResult CompareResult) {
 	fmt.Println("Packages to remove:")
-	result := askForUserInput("remove", comparisionResult.Removed)
+	result := askForUserInput("remove", comparisionResult.Removed, userInput.dryRun)
 	userInput.systemPackages = removeElementsFromSlice(userInput.systemPackages, result)
 
 	fmt.Println("Packages to add")
-	result = askForUserInput("add", comparisionResult.Added)
+	result = askForUserInput("add", comparisionResult.Added, userInput.dryRun)
 	userInput.systemPackages = addElementsToSlice(userInput.systemPackages, result)
 }
 
 func addElementsToSlice(s []string, toAdd []string) []string {
 	for _, v := range toAdd {
 		if index := getElementIndex(s, v); index == -1 {
-			// TODO add add locic
 			s = append(s, v)
 		}
 	}
@@ -48,13 +47,15 @@ func addElementsToSlice(s []string, toAdd []string) []string {
 }
 
 // returns accepted packages
-func askForUserInput(text string, packages []string) []string {
+func askForUserInput(text string, packages []string, dryRun bool) []string {
 	var result []string
 	for _, p := range packages {
 		fmt.Println(fmt.Sprintf("%s: %s", text, p))
 		fmt.Println("[y/N]")
 		if askForConfirmation() {
-			// todo add logic to remove or add package
+			if !dryRun {
+				// todo add logic to remove or add package
+			}
 			result = append(result, p)
 		}
 	}

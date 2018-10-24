@@ -15,7 +15,7 @@ var (
 	app             = kingpin.New("pkgbackup", "generic help")
 	configFile      = app.Flag("configFile", "path to the configFile file").File()
 	hostPackageFile = app.Flag("hostPackageFile", "alternative host packages").File()
-	dryRun          = app.Flag("dryRun", "run the tool without installing anything").Bool()
+	dryRunFlag      = app.Flag("dryRun", "run the tool without installing anything").Bool()
 	syncCommand     = app.Command("sync", "export package list")
 	hostname        = os.Getenv("HOST")
 )
@@ -65,9 +65,35 @@ func sync(config Config, baseDir string) {
 	if err != nil {
 		fmt.Println(fmt.Printf("Failed to read ignore file for host %v: %v", hostname, err.Error()))
 	}
-	userInput := UserInput{dryRun: *dryRun, versionedPackages: versionedPackages, systemPackages: systemPackages, ignoredPackages: ignoredPackages}
+	userInput := UserInput{dryRun: *dryRunFlag, versionedPackages: versionedPackages, systemPackages: systemPackages, ignoredPackages: ignoredPackages}
 	userInput.HandleHostPackagesChange()
 	userInput.HandleSubscribedPackageChanges(hostConfig, config, baseDir)
+	commit(userInput, hostConfig, baseDir)
+}
+func commit(userInput UserInput, hostConfig Host, baseDir string) {
+	if !*dryRunFlag {
+		filePath := baseDir + "/" + hostConfig.File
+		systemPackages := []byte(strings.Join(userInput.systemPackages, "\n"))
+		err := ioutil.WriteFile(filePath, systemPackages, os.ModePerm)
+		if err != nil {
+			fmt.Println("Failed to save versioned packages:", err)
+		}
+		ignoredPackages := []byte(strings.Join(userInput.ignoredPackages, "\n"))
+		filePath = baseDir + "/" + hostConfig.IgnoreFile
+		err = ioutil.WriteFile(filePath, ignoredPackages, os.ModePerm)
+		if err != nil {
+			fmt.Println("Failed to save ignored packages:", err)
+		}
+	} else {
+		fmt.Println("New versioned packages:")
+		for _, v := range userInput.systemPackages {
+			fmt.Println(v)
+		}
+		fmt.Println("New ignored packages:")
+		for _, v := range userInput.ignoredPackages {
+			fmt.Println(v)
+		}
+	}
 }
 func filterComparisonResult(ignoredPackages []string, compareResult CompareResult) CompareResult {
 	toRemove := clearList(compareResult.Removed, ignoredPackages)
