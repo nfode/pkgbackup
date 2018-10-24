@@ -15,3 +15,16 @@ func posString(slice []string, element string) int {
 func contains(slice []string, element string) bool {
 	return !(posString(slice, element) == -1)
 }
+
+func deleteElementByIndex(slice []string, index int) []string {
+	return append(slice[:index], slice[index+1:]...)
+}
+
+func getElementIndex(slice []string, element string) int {
+	for i := range slice {
+		if slice[i] == element {
+			return i
+		}
+	}
+	return -1
+}

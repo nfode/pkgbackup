@@ -12,7 +12,7 @@ func ComparePackages(a []string, b []string) CompareResult {
 		res := contains(b, v)
 		if res {
 			compareResult.Unchanged = append(compareResult.Unchanged, v)
-			b = delete(b, index(b,v))
+			b = deleteElementByIndex(b, getElementIndex(b,v))
 		} else {
 			compareResult.Added = append(compareResult.Added, v)
 		}
@@ -21,15 +21,4 @@ func ComparePackages(a []string, b []string) CompareResult {
 	return compareResult
 }
 
-func delete(slice []string, index int) []string {
-	return append(slice[:index], slice[index+1:]...)
-}
 
-func index(slice []string, element string) int {
-	for i := range slice {
-		if slice[i] == element {
-			return i
-		}
-	}
-	return -1
-}

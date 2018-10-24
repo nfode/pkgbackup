@@ -60,35 +60,9 @@ func sync(config Config, baseDir string) {
 	if err != nil {
 		fmt.Println(fmt.Printf("Failed to read ignore file for host %v: %v", hostname, err.Error()))
 	}
-	comparisionResult := ComparePackages(versionedPackages, systemPackages)
-	fmt.Println("Packages added to versioned packages:")
-	for _, pkg := range comparisionResult.Added {
-		fmt.Println(pkg)
-	}
-	for _, pkg := range comparisionResult.Removed {
-		fmt.Println(pkg)
-	}
-	var outputs []OutputElement
-	if hostConfig.SubscribeTo != nil {
-		for _, subscribedTo := range hostConfig.SubscribeTo {
-			subscribedToConfig, _ := getHostConfig(subscribedTo, config)
-			subscribedToPackages, _ := ReadPackagesFromFile(subscribedToConfig.File, baseDir)
-			comparisionResult := ComparePackages(subscribedToPackages, systemPackages)
-			filteredResult := filterComparisonResult(ignoredPackages, comparisionResult)
-			output := OutputElement{From: subscribedTo, ToInstall: filteredResult.Added, ToRemove: filteredResult.Removed}
-			outputs = append(outputs, output)
-		}
-	}
-	for _, output := range outputs {
-		fmt.Println("Following packages were installed on: ", output.From)
-		for _, pkg := range output.ToInstall {
-			fmt.Println(pkg)
-		}
-		fmt.Println("Following packages were removed on: ", output.From)
-		for _, pkg := range output.ToRemove {
-			fmt.Println(pkg)
-		}
-	}
+	userInput := UserInput{versionedPackages: versionedPackages, systemPackages: systemPackages, ignoredPackages: ignoredPackages}
+	userInput.HandleHostPackagesChange()
+	userInput.HandleSubscribedPackageChanges(hostConfig, config, baseDir)
 }
 func filterComparisonResult(ignoredPackages []string, compareResult CompareResult) CompareResult {
 	toRemove := clearList(compareResult.Removed, ignoredPackages)
