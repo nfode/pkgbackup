@@ -8,10 +8,10 @@ import (
 	"strings"
 )
 
-func GetInstalledPackages() ([]string, error) {
+func GetInstalledPackages(hostPackageFilePath *string) ([]string, error) {
 	var packages []string
-	if hostPackageFile != nil {
-		packages, _ = ReadPackagesFromFile((*hostPackageFile).Name(), "")
+	if hostPackageFilePath != nil {
+		packages, _ = ReadPackagesFromFile(*hostPackageFilePath, "")
 	} else {
 		cmd := exec.Command("yaourt", "-Qqe")
 		result, err := cmd.Output()
@@ -35,8 +35,8 @@ func ClearPackages(packages []string) []string {
 	return clearedPackages
 }
 
-func CommitPackageChanges(userInput UserInput, hostConfig Host, baseDir string) {
-	if !*dryRunFlag {
+func CommitPackageChanges(userInput UserInput, hostConfig Host, baseDir string, dryRun bool) {
+	if !dryRun {
 		filePath := baseDir + "/" + hostConfig.File
 		systemPackages := []byte(strings.Join(userInput.systemPackages, "\n"))
 		err := ioutil.WriteFile(filePath, systemPackages, os.ModePerm)
