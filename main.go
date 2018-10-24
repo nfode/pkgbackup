@@ -12,10 +12,12 @@ import (
 )
 
 var (
-	app         = kingpin.New("pkgbackup", "generic help")
-	configFile  = app.Flag("configFile", "path to the configFile file").File()
-	syncCommand = app.Command("sync", "export package list")
-	hostname    = os.Getenv("HOST")
+	app             = kingpin.New("pkgbackup", "generic help")
+	configFile      = app.Flag("configFile", "path to the configFile file").File()
+	hostPackageFile = app.Flag("hostPackageFile", "alternative host packages").File()
+	dryRun          = app.Flag("dryRun", "run the tool without installing anything").Bool()
+	syncCommand     = app.Command("sync", "export package list")
+	hostname        = os.Getenv("HOST")
 )
 
 func getHostConfig(hostname string, config Config) (Host, error) {
@@ -28,7 +30,10 @@ func getHostConfig(hostname string, config Config) (Host, error) {
 }
 
 func ReadPackagesFromFile(fileName string, baseDir string) ([]string, error) {
-	filePath := baseDir + "/" + fileName
+	filePath := fileName
+	if baseDir != "" {
+		filePath = baseDir + "/" + fileName
+	}
 	data, fileErr := ioutil.ReadFile(filePath)
 	if fileErr != nil {
 		return []string{}, fileErr
@@ -60,7 +65,7 @@ func sync(config Config, baseDir string) {
 	if err != nil {
 		fmt.Println(fmt.Printf("Failed to read ignore file for host %v: %v", hostname, err.Error()))
 	}
-	userInput := UserInput{versionedPackages: versionedPackages, systemPackages: systemPackages, ignoredPackages: ignoredPackages}
+	userInput := UserInput{dryRun: *dryRun, versionedPackages: versionedPackages, systemPackages: systemPackages, ignoredPackages: ignoredPackages}
 	userInput.HandleHostPackagesChange()
 	userInput.HandleSubscribedPackageChanges(hostConfig, config, baseDir)
 }
@@ -83,13 +88,18 @@ func clearList(toClear []string, ignoredPackages []string) []string {
 }
 
 func GetInstalledPackages() ([]string, error) {
-	cmd := exec.Command("yaourt", "-Qqe")
-	result, err := cmd.Output()
-	if err != nil {
-		return []string{}, nil
+	var packages []string
+	if hostPackageFile != nil {
+		packages, _ = ReadPackagesFromFile((*hostPackageFile).Name(), "")
+	} else {
+		cmd := exec.Command("yaourt", "-Qqe")
+		result, err := cmd.Output()
+		if err != nil {
+			return []string{}, nil
+		}
+		resultAsString := string(result)
+		packages = strings.Split(resultAsString, "\n")
 	}
-	resultAsString := string(result)
-	packages := strings.Split(resultAsString, "\n")
 	return clearPackages(packages), nil
 }
 

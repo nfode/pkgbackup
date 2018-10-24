@@ -6,6 +6,7 @@ type UserInput struct {
 	versionedPackages []string
 	systemPackages    []string
 	ignoredPackages   []string
+	dryRun            bool
 }
 
 func (userInput *UserInput) HandleSubscribedPackageChanges(hostConfig Host, config Config, baseDir string) {
@@ -22,13 +23,15 @@ func (userInput *UserInput) HandleSubscribedPackageChanges(hostConfig Host, conf
 
 func (userInput *UserInput) HandleHostPackagesChange() {
 	comparisionResult := ComparePackages(userInput.versionedPackages, userInput.systemPackages)
+	fmt.Println("Comparing installed packages with versioned packages")
 	userInput.askForUserInput(comparisionResult)
 }
 
 func (userInput *UserInput) askForUserInput(comparisionResult CompareResult) {
-	fmt.Println("Packages to remove")
+	fmt.Println("Packages to remove:")
 	result := askForUserInput("remove", comparisionResult.Removed)
 	userInput.systemPackages = removeElementsFromSlice(userInput.systemPackages, result)
+
 	fmt.Println("Packages to add")
 	result = askForUserInput("add", comparisionResult.Added)
 	userInput.systemPackages = addElementsToSlice(userInput.systemPackages, result)

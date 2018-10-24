@@ -7,18 +7,18 @@ type CompareResult struct {
 }
 
 func ComparePackages(a []string, b []string) CompareResult {
+	first := copy(a)
+	second := copy(b)
 	var compareResult = CompareResult{}
-	for _, v := range a {
-		res := contains(b, v)
+	for _, v := range first {
+		res := contains(second, v)
 		if res {
 			compareResult.Unchanged = append(compareResult.Unchanged, v)
-			b = deleteElementByIndex(b, getElementIndex(b,v))
+			second = deleteElementByIndex(second, getElementIndex(second, v))
 		} else {
 			compareResult.Added = append(compareResult.Added, v)
 		}
 	}
-	compareResult.Removed = b
+	compareResult.Removed = second
 	return compareResult
 }
-
-

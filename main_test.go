@@ -17,7 +17,7 @@ func TestGetSystemPackages(t *testing.T) {
 }
 
 func TestReadPackagesFromFile(t *testing.T) {
-	packages, err := ReadPackagesFromFile(exampleConfig, "host1", "example")
+	packages, err := ReadPackagesFromFile("host1", "example")
 	if err != nil {
 		t.Fail()
 	}

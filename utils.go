@@ -28,3 +28,12 @@ func getElementIndex(slice []string, element string) int {
 	}
 	return -1
 }
+
+func copy(a []string) []string {
+	var b []string
+	for _, v := range a {
+		b = append(b, v)
+
+	}
+	return b
+}
