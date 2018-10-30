@@ -5,7 +5,6 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
-	"os"
 	"strings"
 )
 
@@ -19,9 +18,9 @@ type Config struct {
 	Hosts []Host `yaml:"hosts"`
 }
 
-func ParseConfigFile(file *os.File) Config {
+func ParseConfigFile(filePath string) Config {
 	var config Config
-	b, err := ioutil.ReadFile(file.Name())
+	b, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Fatal("error reading file" + err.Error())
 		return Config{}

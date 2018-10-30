@@ -1,48 +1,67 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
 	"path"
 )
 
-var (
-	app             = kingpin.New("pkgbackup", "generic help")
-	configFile      = app.Flag("configFile", "path to the configFile file").File()
-	hostPackageFile = app.Flag("hostPackageFile", "alternative host packages").File()
-	dryRunFlag      = app.Flag("dryRun", "run the tool without installing anything").Bool()
-	syncCommand     = app.Command("sync", "export package list")
-	hostname        = os.Getenv("HOST")
-)
-
 func main() {
-	res := kingpin.MustParse(app.Parse(os.Args[1:]))
-	config := ParseConfigFile(*configFile)
-	switch res {
-	case syncCommand.FullCommand():
-		sync(config, path.Dir((*configFile).Name()))
-	}
-}
-func sync(config Config, baseDir string) {
-	hostConfig, err := GetHostConfig(hostname, config)
-	versionedPackages, err := ReadPackagesFromFile(hostConfig.File, baseDir)
-	systemPackages, err := GetInstalledPackages()
+	configFilePath := flag.String("configFile", "", "path to the config file")
+
+	hostPackageFile := flag.String("hostPackageFile", "", "alternative host packages")
+	dryRunFlag := flag.Bool("dryRun", false, "run the tool without changing anything")
+	hostnameFlag := flag.String("hostname", "", "set custom hostname")
+	flag.Parse()
+
+	hostname, err := determineHostName(hostnameFlag)
 	if err != nil {
-		fmt.Println("reading existing packages failed: " + err.Error())
+		fmt.Println("Failed to determine hostname:", err)
+		os.Exit(1)
 	}
+	if *configFilePath == "" {
+		fmt.Println("Config file path not set!")
+		os.Exit(1)
+	}
+
+	baseDir := path.Dir(*configFilePath)
+	config := ParseConfigFile(*configFilePath)
+	hostConfig, err := GetHostConfig(hostname, config)
+	if err != nil {
+		fmt.Printf("Host %v does not exist", hostname)
+		os.Exit(1)
+	}
+
+	versionedPackages, err := ReadPackagesFromFile(hostConfig.File, baseDir)
+	if err != nil {
+		fmt.Println("reading versioned packages failed: " + err.Error())
+	}
+
+	systemPackages, err := GetInstalledPackages(hostPackageFile)
+	if err != nil {
+		fmt.Println("reading installed packages failed: " + err.Error())
+	}
+
 	ignoredPackages, err := ReadPackagesFromFile(hostConfig.IgnoreFile, baseDir)
 	if err != nil {
 		fmt.Println(fmt.Printf("Failed to read ignore file for host %v: %v", hostname, err.Error()))
 	}
+
 	userInput := UserInput{dryRun: *dryRunFlag, versionedPackages: versionedPackages, systemPackages: systemPackages, ignoredPackages: ignoredPackages}
 	userInput.HandleHostPackagesChange()
 	userInput.HandleSubscribedPackageChanges(hostConfig, config, baseDir)
-	CommitPackageChanges(userInput, hostConfig, baseDir)
+	CommitPackageChanges(userInput, hostConfig, baseDir, *dryRunFlag)
 }
 
-
-
-
-
-
+func determineHostName(hostnameFlag *string) (string, error) {
+	hostname := *hostnameFlag
+	if hostname == "" {
+		host, err := os.Hostname()
+		if err != nil {
+			return "", err
+		}
+		hostname = host
+	}
+	return hostname, nil
+}

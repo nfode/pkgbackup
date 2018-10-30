@@ -50,7 +50,7 @@ func addElementsToSlice(s []string, toAdd []string) []string {
 func askForUserInput(text string, packages []string, dryRun bool) []string {
 	var result []string
 	for _, p := range packages {
-		fmt.Println(fmt.Sprintf("%s: %s", text, p))
+		fmt.Println(fmt.Sprintf("%v: %v", text, p))
 		fmt.Println("[y/N]")
 		if askForConfirmation() {
 			if !dryRun {
