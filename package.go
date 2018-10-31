@@ -13,6 +13,7 @@ func GetInstalledPackages(hostPackageFilePath *string) ([]string, error) {
 	if hostPackageFilePath != nil {
 		packages, _ = ReadPackagesFromFile(*hostPackageFilePath, "")
 	} else {
+		// TODO properly split this up
 		cmd := exec.Command("yaourt", "-Qqe")
 		result, err := cmd.Output()
 		if err != nil {
