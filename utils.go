@@ -1,5 +1,8 @@
 package main
 
+const (
+	CustomFileMode = 0664
+)
 // posString returns the first index of element in slice.
 // If slice does not contain element, returns -1.
 func posString(slice []string, element string) int {
